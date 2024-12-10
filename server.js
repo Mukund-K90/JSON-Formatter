@@ -19,6 +19,14 @@ app.get('/upload', (req, res) => {
 
 app.post('/upload', upload.single('file'), (req, res) => {
     const filePath = req.file.path;
+    if (req.file.mimetype === "application/json") {
+        res.render('home', {
+            message: 'Data is already in JSON formate',
+            downloadLink: null,
+            rowData: null,
+            code: null
+        });
+    }
     const outputFilePath = path.join(__dirname, 'uploads', `${req.file.filename}_output.json`);
 
     fs.readFile(filePath, 'utf8', (err, rowData) => {
@@ -64,8 +72,8 @@ app.post('/convert', (req, res) => {
         res.json({
             message: 'Data converted successfully!',
             downloadLink: `/download/${path.basename(outputFilePath)}`,
-            rowData: rowData, 
-            code: jsonResult  
+            rowData: rowData,
+            code: jsonResult
         });
     });
 });
