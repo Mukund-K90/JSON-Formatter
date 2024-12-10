@@ -161,7 +161,9 @@
                     document.getElementById('flashMessage').innerText = data.message;
 
                     const downloadLinkElement = document.getElementById('downloadLink');
-                    downloadLinkElement.innerHTML = `<a href="${data.downloadLink}" class="btn btn-success">Download Converted File</a>`;
+                    downloadLinkElement.href = data.downloadLink;
+                    convertButton.style.display = 'none';
+
                 })
                 .catch(error => {
                     console.error('Error:', error);
