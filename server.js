@@ -11,14 +11,23 @@ app.use(express.json());
 
 
 app.get('/', (req, res) => {
-    res.render('home', { message: null, downloadLink: null, code: null });
+    res.render('home', {
+        message: null, downloadLink: null, rowData: null,
+        code: null,
+        operation: null
+    });
 });
 app.get('/convert', (req, res) => {
-    res.render('home', { message: null, downloadLink: null, code: null });
+    res.render('home', {
+        message: null, downloadLink: null, rowData: null,
+        code: null,
+        operation: null
+    });
 });
 
 app.post('/convert', upload.single('file'), (req, res) => {
     const { rowData, operation } = req.body;
+    console.log(rowData);
 
     if (!operation || !['CsvToJson', 'JsonToCsv'].includes(operation)) {
         return res.status(400).send('Invalid operation');

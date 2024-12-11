@@ -70,8 +70,7 @@
 
                         <!-- File Input -->
                         <div class="col">
-                            <input type="file" name="file" accept=".csv, .json" id="fileInput" class="form-control"
-                                required>
+                            <input type="file" name="file" accept=".csv, .json" id="fileInput" class="form-control">
                         </div>
 
                         <!-- Convert Buttons -->
@@ -96,18 +95,16 @@
                         </div>
                     </div>
                     <!-- Code Section -->
-                    <% if (code) { %>
-                        <div class="mt-4 d-flex">
-                            <div class="d-flex flex-column rowData">
-                                <textarea class="rowData" id="data"><%= rowData ?rowData :"NO Row Data" %></textarea>
-                                <button type="submit" class="btn btn-primary" id="convertButton"
-                                    onclick="convertRowData('<%= operation %>')">Convert Row Data</button>
+                    <div class="mt-4 d-flex">
+                        <div class="d-flex flex-column rowData">
+                            <textarea class="rowData" id="data"><%= rowData ?rowData :"NO Row Data" %></textarea>
+                            <button type="submit" class="btn btn-primary" id="convertButton"
+                                onclick="convertRowData('<%= operation %>')">Convert Row Data</button>
 
-                            </div>
-                            <textarea id="code" readonly><%= JSON.stringify(code, null, 2) %></textarea>
                         </div>
-                        <% } %>
-                            <% } %>
+                        <textarea id="code" readonly><%= JSON.stringify(code, null, 2) %></textarea>
+                    </div>
+                    <% } %>
     </div>
 
     <script>
