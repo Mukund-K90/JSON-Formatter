@@ -57,24 +57,29 @@
             <% } %>
 
                 <!-- File Upload Form -->
-                <form action="/upload" method="POST" enctype="multipart/form-data">
+                <form action="/convert" method="POST" enctype="multipart/form-data">
                     <div class="row align-items-center">
                         <!-- Title -->
                         <div class="col-auto">
-                            <label for="fileInput" class="form-label mb-0">Upload your CSV file:</label>
+                            <label for="fileInput" class="form-label mb-0">Upload your file:</label>
                         </div>
 
                         <!-- File Input -->
                         <div class="col">
-                            <input type="file" name="file" accept=".csv" id="fileInput" class="form-control" required>
+                            <input type="file" name="file" accept=".csv, .json" id="fileInput" class="form-control"
+                                required>
                         </div>
 
-                        <!-- Convert Button -->
+                        <!-- Convert Buttons -->
                         <div class="col-auto">
-                            <button type="submit" class="btn btn-primary">Convert File</button>
+                            <button type="submit" name="operation" value="CsvToJson" class="btn btn-primary">CSV to
+                                JSON</button>
+                            <button type="submit" name="operation" value="JsonToCsv" class="btn btn-primary">JSON to
+                                CSV</button>
                         </div>
                     </div>
                 </form>
+
                 <!-- Download Section -->
                 <% if (downloadLink) { %>
                     <div class="d-flex gap-2">
@@ -92,7 +97,7 @@
                             <div class="d-flex flex-column rowData">
                                 <textarea class="rowData" id="data"><%= rowData ?rowData :"NO Row Data" %></textarea>
                                 <button type="submit" class="btn btn-primary" id="convertButton"
-                                    onclick="convertRowData()">Convert Row Data</button>
+                                    onclick="convertRowData('<%= operation %>')">Convert Row Data</button>
 
                             </div>
                             <textarea id="code" readonly><%= JSON.stringify(code, null, 2) %></textarea>
@@ -141,7 +146,8 @@
             convertButton.style.display = 'block';
         });
 
-        function convertRowData() {
+        function convertRowData(operation) {
+
             const rowData = document.getElementById('data').value;
 
             fetch('/convert', {
@@ -149,11 +155,10 @@
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ rowData: rowData })
+                body: JSON.stringify({ rowData: rowData, operation: operation })
             })
                 .then(response => response.json())
                 .then(data => {
-                    console.log(data);
 
                     document.getElementById('data').value = data.rowData;
                     document.getElementById('code').textContent = JSON.stringify(data.code, null, 2);

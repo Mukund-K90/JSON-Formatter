@@ -13,72 +13,140 @@ app.use(express.json());
 app.get('/', (req, res) => {
     res.render('home', { message: null, downloadLink: null, code: null });
 });
-app.get('/upload', (req, res) => {
+app.get('/convert', (req, res) => {
     res.render('home', { message: null, downloadLink: null, code: null });
 });
 
-app.post('/upload', upload.single('file'), (req, res) => {
-    const filePath = req.file.path;
-    if (req.file.mimetype === "application/json") {
-        res.render('home', {
-            message: 'Data is already in JSON formate',
-            downloadLink: null,
-            rowData: null,
-            code: null
-        });
+app.post('/convert', upload.single('file'), (req, res) => {
+    const { rowData, operation } = req.body;
+
+    if (!operation || !['CsvToJson', 'JsonToCsv'].includes(operation)) {
+        return res.status(400).send('Invalid operation');
     }
-    const outputFilePath = path.join(__dirname, 'uploads', `${req.file.filename}_output.json`);
 
-    fs.readFile(filePath, 'utf8', (err, rowData) => {
-        if (err) {
-            return res.status(500).send('Error reading file');
-        }
+    if (req.file) {
+        const filePath = req.file.path;
 
-        const jsonResult = convertRowToJson(rowData);
-
-        fs.writeFile(outputFilePath, JSON.stringify(jsonResult, null, 2), 'utf8', (err) => {
-            if (err) {
-                return res.status(500).send('Error writing JSON file');
+        if (operation === 'CsvToJson') {
+            if (req.file.mimetype === "application/json") {
+                return res.render('home', {
+                    message: 'Data is already in JSON format',
+                    downloadLink: null,
+                    rowData: null,
+                    code: null,
+                    operation: null
+                });
             }
 
-            res.render('home', {
-                message: 'File converted successfully!',
-                downloadLink: `/download/${path.basename(outputFilePath)}`,
-                rowData: rowData,
-                code: jsonResult
+            const outputFilePath = path.join(__dirname, 'uploads', `${Date.now()}-${operation}.json`);
+
+            fs.readFile(filePath, 'utf8', (err, fileData) => {
+                if (err) {
+                    return res.status(500).send('Error reading file');
+                }
+
+                const jsonResult = convertRowToJson(fileData);
+
+                fs.writeFile(outputFilePath, JSON.stringify(jsonResult, null, 2), 'utf8', (err) => {
+                    if (err) {
+                        return res.status(500).send('Error writing JSON file');
+                    }
+
+                    res.render('home', {
+                        message: 'File converted successfully!',
+                        downloadLink: `/download/${path.basename(outputFilePath)}`,
+                        rowData: fileData,
+                        code: jsonResult,
+                        operation: operation
+                    });
+
+                    fs.unlinkSync(filePath);
+                });
             });
+        } else if (operation === 'JsonToCsv') {
+            console.log("JsonToCsv");
 
-            fs.unlinkSync(filePath);
-        });
-    });
-});
+            if (req.file.mimetype === "text/csv") {
+                return res.render('home', {
+                    message: 'Data is already in CSV format',
+                    downloadLink: null,
+                    rowData: null,
+                    code: null,
+                    operation: null
+                });
+            }
 
-app.post('/convert', (req, res) => {
-    const { rowData } = req.body;
+            const outputFilePath = path.join(__dirname, 'uploads', `${Date.now()}-${operation}.csv`);
 
-    if (!rowData) {
-        return res.status(400).send('No data provided');
-    }
+            fs.readFile(filePath, 'utf8', (err, fileData) => {
+                if (err) {
+                    return res.status(500).send('Error reading file');
+                }
 
-    const jsonResult = convertRowToJson(rowData);
+                const jsonResult = JSON.parse(fileData);
 
-    const outputFilePath = path.join(__dirname, 'uploads', `converted_${Date.now()}.json`);
+                const rowResult = convertJsonToRow(jsonResult);
 
-    fs.writeFile(outputFilePath, JSON.stringify(jsonResult, null, 2), 'utf8', (err) => {
-        if (err) {
-            return res.status(500).send('Error writing JSON file');
+                fs.writeFile(outputFilePath, rowResult, 'utf8', (err) => {
+                    if (err) {
+                        return res.status(500).send('Error writing CSV file');
+                    }
+
+                    res.render('home', {
+                        message: 'File converted successfully!',
+                        downloadLink: `/download/${path.basename(outputFilePath)}`,
+                        rowData: fileData,
+                        code: rowResult,
+                        operation: operation
+                    });
+
+                    fs.unlinkSync(filePath);
+                });
+            });
         }
+    } else if (rowData) {
+        if (operation === 'CsvToJson') {
+            const jsonResult = convertRowToJson(rowData);
 
-        res.json({
-            message: 'Data converted successfully!',
-            downloadLink: `/download/${path.basename(outputFilePath)}`,
-            rowData: rowData,
-            code: jsonResult
-        });
-    });
+            const outputFilePath = path.join(__dirname, 'uploads', `${Date.now()}-${operation}.json`);
+
+            fs.writeFile(outputFilePath, JSON.stringify(jsonResult, null, 2), 'utf8', (err) => {
+                if (err) {
+                    return res.status(500).send('Error writing JSON file');
+                }
+
+                res.json({
+                    message: 'Data converted successfully!',
+                    downloadLink: `/download/${path.basename(outputFilePath)}`,
+                    rowData: rowData,
+                    code: jsonResult,
+                    operation: operation
+                });
+            });
+        } else if (operation === 'JsonToCsv') {
+            const jsonResult = JSON.parse(rowData);
+            const rowResult = convertJsonToRow(jsonResult);
+
+            const outputFilePath = path.join(__dirname, 'uploads', `${Date.now()}-${operation}.csv`);
+
+            fs.writeFile(outputFilePath, rowResult, 'utf8', (err) => {
+                if (err) {
+                    return res.status(500).send('Error writing CSV file');
+                }
+
+                res.json({
+                    message: 'Data converted successfully!',
+                    downloadLink: `/download/${path.basename(outputFilePath)}`,
+                    rowData: rowData,
+                    code: rowResult,
+                    operation: operation
+                });
+            });
+        }
+    } else {
+        res.status(400).send('No data provided');
+    }
 });
-
-
 
 
 
@@ -107,4 +175,20 @@ function convertRowToJson(rowData) {
             return obj;
         }, {});
     });
+}
+
+function convertJsonToRow(jsonData) {
+    if (!Array.isArray(jsonData) || jsonData.length === 0) {
+        throw new Error('Input must be a non-empty array of objects.');
+    }
+
+    const headers = Object.keys(jsonData[0]); 
+    const csv = [
+        headers.join(','), 
+        ...jsonData.map(obj =>
+            headers.map(header => obj[header] || "").join(',') 
+        )
+    ].join('\n'); 
+
+    return csv;
 }
