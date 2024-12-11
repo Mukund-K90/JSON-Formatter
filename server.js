@@ -27,9 +27,8 @@ app.get('/convert', (req, res) => {
 
 app.post('/convert', upload.single('file'), (req, res) => {
     const { rowData, operation } = req.body;
-    console.log(rowData);
 
-    if (!operation || !['CsvToJson', 'JsonToCsv'].includes(operation)) {
+    if (!operation || !['CsvToJson', 'JsonToCsv', 'SqlToJson'].includes(operation)) {
         return res.status(400).send('Invalid operation');
     }
 
@@ -37,9 +36,10 @@ app.post('/convert', upload.single('file'), (req, res) => {
         const filePath = req.file.path;
 
         if (operation === 'CsvToJson') {
+            // Validator: If the file is JSON, show an error message
             if (req.file.mimetype === "application/json") {
                 return res.render('home', {
-                    message: 'Data is already in JSON format',
+                    message: 'Cannot convert JSON file to CSV. Please upload a CSV file.',
                     downloadLink: null,
                     rowData: null,
                     code: null,
@@ -48,14 +48,11 @@ app.post('/convert', upload.single('file'), (req, res) => {
             }
 
             const outputFilePath = path.join(__dirname, 'uploads', `${Date.now()}-${operation}.json`);
-
             fs.readFile(filePath, 'utf8', (err, fileData) => {
                 if (err) {
                     return res.status(500).send('Error reading file');
                 }
-
                 const jsonResult = convertRowToJson(fileData);
-
                 fs.writeFile(outputFilePath, JSON.stringify(jsonResult, null, 2), 'utf8', (err) => {
                     if (err) {
                         return res.status(500).send('Error writing JSON file');
@@ -73,11 +70,10 @@ app.post('/convert', upload.single('file'), (req, res) => {
                 });
             });
         } else if (operation === 'JsonToCsv') {
-            console.log("JsonToCsv");
-
+            // Validator: If the file is CSV, show an error message
             if (req.file.mimetype === "text/csv") {
                 return res.render('home', {
-                    message: 'Data is already in CSV format',
+                    message: 'Cannot convert CSV file to JSON. Please upload a JSON file.',
                     downloadLink: null,
                     rowData: null,
                     code: null,
@@ -86,21 +82,16 @@ app.post('/convert', upload.single('file'), (req, res) => {
             }
 
             const outputFilePath = path.join(__dirname, 'uploads', `${Date.now()}-${operation}.csv`);
-
             fs.readFile(filePath, 'utf8', (err, fileData) => {
                 if (err) {
                     return res.status(500).send('Error reading file');
                 }
-
                 const jsonResult = JSON.parse(fileData);
-
                 const rowResult = convertJsonToRow(jsonResult);
-
                 fs.writeFile(outputFilePath, rowResult, 'utf8', (err) => {
                     if (err) {
                         return res.status(500).send('Error writing CSV file');
                     }
-
                     res.render('home', {
                         message: 'File converted successfully!',
                         downloadLink: `/download/${path.basename(outputFilePath)}`,
@@ -113,17 +104,50 @@ app.post('/convert', upload.single('file'), (req, res) => {
                 });
             });
         }
+        else if (operation === 'SqlToJson') {
+            // Validator: If the file is JSON or CSV, show an error message
+            if (req.file.mimetype === "application/json" || req.file.mimetype === "text/csv") {
+                return res.render('home', {
+                    message: 'Cannot convert JSON or CSV file to SQL. Please upload a SQL file.',
+                    downloadLink: null,
+                    rowData: null,
+                    code: null,
+                    operation: null
+                });
+            }
+
+            const outputFilePath = path.join(__dirname, 'uploads', `${Date.now()}-${operation}.json`);
+            fs.readFile(filePath, 'utf8', (err, fileData) => {
+                if (err) {
+                    return res.status(500).send('Error reading file');
+                }
+
+                const jsonResult = convertSqlToJson(fileData);
+                fs.writeFile(outputFilePath, JSON.stringify(jsonResult, null, 2), 'utf8', (err) => {
+                    if (err) {
+                        return res.status(500).send('Error writing JSON file');
+                    }
+
+                    res.render('home', {
+                        message: 'File converted successfully!',
+                        downloadLink: `/download/${path.basename(outputFilePath)}`,
+                        rowData: fileData,
+                        code: jsonResult,
+                        operation: operation
+                    });
+
+                    fs.unlinkSync(filePath);
+                });
+            });
+        }
     } else if (rowData) {
         if (operation === 'CsvToJson') {
             const jsonResult = convertRowToJson(rowData);
-
             const outputFilePath = path.join(__dirname, 'uploads', `${Date.now()}-${operation}.json`);
-
             fs.writeFile(outputFilePath, JSON.stringify(jsonResult, null, 2), 'utf8', (err) => {
                 if (err) {
                     return res.status(500).send('Error writing JSON file');
                 }
-
                 res.json({
                     message: 'Data converted successfully!',
                     downloadLink: `/download/${path.basename(outputFilePath)}`,
@@ -137,7 +161,6 @@ app.post('/convert', upload.single('file'), (req, res) => {
             const rowResult = convertJsonToRow(jsonResult);
 
             const outputFilePath = path.join(__dirname, 'uploads', `${Date.now()}-${operation}.csv`);
-
             fs.writeFile(outputFilePath, rowResult, 'utf8', (err) => {
                 if (err) {
                     return res.status(500).send('Error writing CSV file');
@@ -148,6 +171,23 @@ app.post('/convert', upload.single('file'), (req, res) => {
                     downloadLink: `/download/${path.basename(outputFilePath)}`,
                     rowData: rowData,
                     code: rowResult,
+                    operation: operation
+                });
+            });
+        }
+        else if (operation === 'SqlToJson') {
+            const jsonResult = convertSqlToJson(rowData);
+            const outputFilePath = path.join(__dirname, 'uploads', `${Date.now()}-${operation}.json`);
+            fs.writeFile(outputFilePath, JSON.stringify(jsonResult, null, 2), 'utf8', (err) => {
+                if (err) {
+                    return res.status(500).send('Error writing JSON file');
+                }
+
+                res.json({
+                    message: 'Data converted successfully!',
+                    downloadLink: `/download/${path.basename(outputFilePath)}`,
+                    rowData: rowData,
+                    code: jsonResult,
                     operation: operation
                 });
             });
@@ -200,4 +240,38 @@ function convertJsonToRow(jsonData) {
     ].join('\n');
 
     return csv;
+}
+
+
+function convertSqlToJson(sqlData) {
+    const result = [];
+
+    const cleanedSqlData = sqlData.replace(/--.*$/gm, '').replace(/\s+/g, ' ').trim();
+
+    const regex = /INSERT INTO `([^`]+)` \(([^)]+)\) VALUES \(([^)]+)\)/g;
+    let match;
+
+    console.log("Cleaned SQL Data:\n", cleanedSqlData);
+
+    while ((match = regex.exec(cleanedSqlData)) !== null) {
+        console.log("Match found:", match);
+
+        const tableName = match[1];
+        const columns = match[2].split(',').map(col => col.trim().replace(/`/g, ''));
+        const values = match[3].split(',').map(value => value.trim().replace(/'/g, ""));
+
+        const entry = {};
+        columns.forEach((column, index) => {
+            entry[column] = values[index];
+        });
+
+        result.push({
+            table: tableName,
+            data: entry
+        });
+    }
+
+    console.log("Parsed Result:", result);
+
+    return result;
 }
