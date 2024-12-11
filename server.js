@@ -182,13 +182,13 @@ function convertJsonToRow(jsonData) {
         throw new Error('Input must be a non-empty array of objects.');
     }
 
-    const headers = Object.keys(jsonData[0]); 
+    const headers = Object.keys(jsonData[0]);
     const csv = [
-        headers.join(','), 
+        headers.join(','),
         ...jsonData.map(obj =>
-            headers.map(header => obj[header] || "").join(',') 
+            headers.map(header => obj[header] || "").join(',')
         )
-    ].join('\n'); 
+    ].join('\n');
 
     return csv;
 }
